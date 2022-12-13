@@ -11,6 +11,7 @@
 
 namespace Symfony\Component\VarExporter;
 
+use stdClass;
 use Symfony\Component\VarExporter\Internal\Hydrator;
 use Symfony\Component\VarExporter\Internal\LazyObjectRegistry as Registry;
 use Symfony\Component\VarExporter\Internal\LazyObjectState;
@@ -18,6 +19,8 @@ use Symfony\Component\VarExporter\Internal\LazyObjectState;
 trait LazyGhostTrait
 {
     private LazyObjectState $lazyObjectState;
+
+    private stdClass $nullScopeObject;
 
     /**
      * Creates a lazy-loading ghost instance.
@@ -196,9 +199,9 @@ trait LazyGhostTrait
         try {
             if (null === $scope) {
                 if (null === $readonlyScope) {
-                    return $this->$name;
+                    return $this->nullScopeObject->$name;
                 }
-                $value = $this->$name;
+                $value = $this->nullScopeObject->$name;
 
                 return $value;
             }
@@ -212,9 +215,8 @@ trait LazyGhostTrait
 
             try {
                 if (null === $scope) {
-                    $this->$name = [];
-
-                    return $this->$name;
+                    $this->nullScopeObject->$name = [];
+                    return $this->nullScopeObject->$name;
                 }
 
                 $accessor['set']($this, $name, []);
@@ -253,7 +255,7 @@ trait LazyGhostTrait
         set_in_scope:
 
         if (null === $scope) {
-            $this->$name = $value;
+            $this->nullScopeObject->$name = $value;
         } else {
             $accessor = Registry::$classAccessors[$scope] ??= Registry::getClassAccessors($scope);
             $accessor['set']($this, $name, $value);
@@ -283,7 +285,7 @@ trait LazyGhostTrait
         isset_in_scope:
 
         if (null === $scope) {
-            return isset($this->$name);
+            return isset($this->nullScopeObject->$name);
         }
         $accessor = Registry::$classAccessors[$scope] ??= Registry::getClassAccessors($scope);
 
@@ -316,7 +318,7 @@ trait LazyGhostTrait
         unset_in_scope:
 
         if (null === $scope) {
-            unset($this->$name);
+            unset($this->nullScopeObject->$name);
         } else {
             $accessor = Registry::$classAccessors[$scope] ??= Registry::getClassAccessors($scope);
             $accessor['unset']($this, $name);
@@ -364,6 +366,11 @@ trait LazyGhostTrait
         }
 
         return $data;
+    }
+
+    public function __construct()
+    {
+        $this->nullScopeObject = new stdClass();
     }
 
     public function __destruct()
